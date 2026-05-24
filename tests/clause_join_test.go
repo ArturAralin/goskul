@@ -210,6 +210,188 @@ func TestMultipleJoins(t *testing.T) {
 	}
 }
 
+func TestJoinOnNull(t *testing.T) {
+	qb := sqlQb.Select().
+		From("orders").
+		LeftJoin("users", func(j *goskul.JoinClause) {
+			j.OnNull("orders.deleted_at")
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "orders" left join "users" on "orders"."deleted_at" is null`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 0 {
+		t.Errorf("expected no args, got %v", args)
+	}
+}
+
+func TestJoinAndOnNull(t *testing.T) {
+	qb := sqlQb.Select().
+		From("orders").
+		InnerJoin("users", func(j *goskul.JoinClause) {
+			j.On("users.id", "=", "orders.user_id").
+				AndOnNull("orders.deleted_at")
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "orders" inner join "users" on "users"."id" = "orders"."user_id" and "orders"."deleted_at" is null`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 0 {
+		t.Errorf("expected no args, got %v", args)
+	}
+}
+
+func TestJoinOrOnNull(t *testing.T) {
+	qb := sqlQb.Select().
+		From("orders").
+		InnerJoin("users", func(j *goskul.JoinClause) {
+			j.On("users.id", "=", "orders.user_id").
+				OrOnNull("orders.deleted_at")
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "orders" inner join "users" on "users"."id" = "orders"."user_id" or "orders"."deleted_at" is null`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 0 {
+		t.Errorf("expected no args, got %v", args)
+	}
+}
+
+func TestJoinOnRaw(t *testing.T) {
+	qb := sqlQb.Select().
+		From("orders").
+		InnerJoin("users", func(j *goskul.JoinClause) {
+			j.OnRaw(sqlQb.Raw("users.id = orders.user_id and users.active = ?", true))
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "orders" inner join "users" on users.id = orders.user_id and users.active = $1`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 1 || args[0] != true {
+		t.Errorf("expected args=[true], got %v", args)
+	}
+}
+
+func TestJoinOrOnRaw(t *testing.T) {
+	qb := sqlQb.Select().
+		From("orders").
+		InnerJoin("users", func(j *goskul.JoinClause) {
+			j.On("users.id", "=", "orders.user_id").
+				OrOnRaw(sqlQb.Raw("users.guest_id = ?", 42))
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "orders" inner join "users" on "users"."id" = "orders"."user_id" or users.guest_id = $1`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 1 || args[0] != 42 {
+		t.Errorf("expected args=[42], got %v", args)
+	}
+}
+
+func TestJoinOnSubCond(t *testing.T) {
+	qb := sqlQb.Select().
+		From("orders").
+		InnerJoin("users", func(j *goskul.JoinClause) {
+			j.On("users.id", "=", "orders.user_id").
+				OnSubCond(func(s *goskul.SubCond) {
+					s.Where("users.active", "=", true)
+				})
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// sub-cond has 1 inner condition → no parens
+	want := `select * from "orders" inner join "users" on "users"."id" = "orders"."user_id" and "users"."active" = $1`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 1 || args[0] != true {
+		t.Errorf("expected args=[true], got %v", args)
+	}
+}
+
+func TestJoinAndOnSubCond(t *testing.T) {
+	qb := sqlQb.Select().
+		From("orders").
+		InnerJoin("users", func(j *goskul.JoinClause) {
+			j.On("users.id", "=", "orders.user_id").
+				AndOnSubCond(func(s *goskul.SubCond) {
+					s.Where("users.active", "=", true).OrWhere("users.role", "=", "admin")
+				})
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "orders" inner join "users" on "users"."id" = "orders"."user_id" and ("users"."active" = $1 or "users"."role" = $2)`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 2 || args[0] != true || args[1] != "admin" {
+		t.Errorf("expected args=[true, admin], got %v", args)
+	}
+}
+
+func TestJoinOrOnSubCond(t *testing.T) {
+	qb := sqlQb.Select().
+		From("orders").
+		InnerJoin("users", func(j *goskul.JoinClause) {
+			j.On("users.id", "=", "orders.user_id").
+				OrOnSubCond(func(s *goskul.SubCond) {
+					s.Where("users.type", "=", "guest").
+						Where("users.active", "=", true)
+				})
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "orders" inner join "users" on "users"."id" = "orders"."user_id" or ("users"."type" = $1 and "users"."active" = $2)`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 2 || args[0] != "guest" || args[1] != true {
+		t.Errorf("expected args=[guest, true], got %v", args)
+	}
+}
+
 func TestJoinWithWhere(t *testing.T) {
 	qb := sqlQb.Select().
 		From("orders").

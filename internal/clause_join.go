@@ -70,7 +70,53 @@ func (qb *JoinClause) OrOn(left interface{}, op string, right interface{}) *Join
 	return qb
 }
 
-// todo: add OnRaw, OnBetween
+func (qb *JoinClause) OnNull(col interface{}) *JoinClause {
+	qb.cond.PushUnaryCondLeft("and", "is null", prepareLeftArg(col))
+	return qb
+}
+
+func (qb *JoinClause) AndOnNull(col interface{}) *JoinClause {
+	qb.cond.PushUnaryCondLeft("and", "is null", prepareLeftArg(col))
+	return qb
+}
+
+func (qb *JoinClause) OrOnNull(col interface{}) *JoinClause {
+	qb.cond.PushUnaryCondLeft("or", "is null", prepareLeftArg(col))
+	return qb
+}
+
+func (qb *JoinClause) OnRaw(raw *QbRaw) *JoinClause {
+	qb.cond.PushRawCond("and", raw)
+	return qb
+}
+
+func (qb *JoinClause) OrOnRaw(raw *QbRaw) *JoinClause {
+	qb.cond.PushRawCond("or", raw)
+	return qb
+}
+
+func (qb *JoinClause) onSubCondOp(unionOp string, fn func(*SubCond)) *JoinClause {
+	sub := newSubCond(qb.cond.settings)
+	fn(sub)
+	if sub.whereClause != nil {
+		qb.cond.PushSubCond(unionOp, sub.whereClause)
+	}
+	return qb
+}
+
+func (qb *JoinClause) OnSubCond(fn func(*SubCond)) *JoinClause {
+	return qb.onSubCondOp("and", fn)
+}
+
+func (qb *JoinClause) AndOnSubCond(fn func(*SubCond)) *JoinClause {
+	return qb.onSubCondOp("and", fn)
+}
+
+func (qb *JoinClause) OrOnSubCond(fn func(*SubCond)) *JoinClause {
+	return qb.onSubCondOp("or", fn)
+}
+
+// todo: add OnBetween
 
 func (qb *JoinClause) Clone() *JoinClause {
 	if qb.rawSql != nil {
