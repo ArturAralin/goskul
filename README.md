@@ -1,6 +1,6 @@
 # Goskul 💀
 
-SQL query builder for PostgreSQL. Produces parameterized queries with `$N` placeholders and double-quoted identifiers.
+SQL query builder.
 
 ## Setup
 
