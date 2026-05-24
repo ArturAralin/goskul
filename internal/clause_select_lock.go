@@ -6,6 +6,7 @@ type selectLockModifier string
 const (
 	selectLockForUpdate      selectLockType = "for update"
 	selectLockForShare       selectLockType = "for share"
+	selectLockForKeyShare    selectLockType = "for key share"
 	selectLockForNoKeyUpdate selectLockType = "for no key update"
 
 	selectLockSkipLocked selectLockModifier = "skip locked"

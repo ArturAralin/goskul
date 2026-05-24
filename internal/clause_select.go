@@ -159,6 +159,17 @@ func (qb *SelectQb) LockForNoKeyUpdate() *SelectQb {
 	return qb
 }
 
+func (qb *SelectQb) LockForKeyShare() *SelectQb {
+	if !qb.settings.LockForKeyShareFeature {
+		panic("LockForKeyShareFeature is not supported by database settings")
+	}
+	if qb.lockClause == nil {
+		qb.lockClause = &selectLockClause{}
+	}
+	qb.lockClause.lockType = selectLockForKeyShare
+	return qb
+}
+
 func (qb *SelectQb) LockSkipLocked() *SelectQb {
 	if !qb.settings.LockSkipLockedFeature {
 		panic("LockSkipLockedFeature is not supported by database settings")

@@ -29,6 +29,17 @@ func TestLockForShare(t *testing.T) {
 	}
 }
 
+func TestLockForKeyShare(t *testing.T) {
+	sql, _, err := sqlQb.Select().From("t").LockForKeyShare().ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := `select * from "t" for key share`
+	if sql != want {
+		t.Errorf("got %q, want %q", sql, want)
+	}
+}
+
 func TestLockForNoKeyUpdate(t *testing.T) {
 	sql, _, err := sqlQb.Select().From("t").LockForNoKeyUpdate().ToSql()
 	if err != nil {
@@ -142,6 +153,16 @@ func TestLockForShareFeatureDisabledPanics(t *testing.T) {
 		}
 	}()
 	qb.Select().LockForShare()
+}
+
+func TestLockForKeyShareFeatureDisabledPanics(t *testing.T) {
+	qb := goskul.SetupQueryBuilder(internal.NewQbSettings())
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("expected panic for LockForKeyShareFeature disabled")
+		}
+	}()
+	qb.Select().LockForKeyShare()
 }
 
 func TestLockForNoKeyUpdateFeatureDisabledPanics(t *testing.T) {

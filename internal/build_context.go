@@ -136,7 +136,10 @@ func (ctx *SqlBuildingCtx) WriteArg(rel interface{}, relationAliasing bool) erro
 					}
 
 					ctx.Sql.WriteByte(ctx.settings.BindingSymbol)
-					ctx.Sql.WriteString(fmt.Sprintf("%d", n))
+
+					if ctx.settings.BindingNumeration {
+						ctx.Sql.WriteString(fmt.Sprintf("%d", n))
+					}
 				}
 
 				ctx.Sql.WriteByte(')')
@@ -149,7 +152,9 @@ func (ctx *SqlBuildingCtx) WriteArg(rel interface{}, relationAliasing bool) erro
 					}
 
 					ctx.Sql.WriteByte(ctx.settings.BindingSymbol)
-					ctx.Sql.WriteString(fmt.Sprintf("%d", n))
+					if ctx.settings.BindingNumeration {
+						ctx.Sql.WriteString(fmt.Sprintf("%d", n))
+					}
 				}
 			}
 		}

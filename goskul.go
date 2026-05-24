@@ -17,11 +17,29 @@ type Goskul struct {
 func PostgreSQLSettings() *internal.QbSettings {
 	settings := internal.NewQbSettings()
 	settings.BindingSymbol = '$'
+	settings.BindingNumeration = true
 	settings.RelationSymbol = '"'
 	settings.ReturningFeature = true
 	settings.LockForUpdateFeature = true
 	settings.LockForShareFeature = true
+	settings.LockForKeyShareFeature = true
 	settings.LockForNoKeyUpdateFeature = true
+	settings.LockSkipLockedFeature = true
+	settings.LockNoWaitFeature = true
+
+	return settings
+}
+
+func MySQLSettings() *internal.QbSettings {
+	settings := internal.NewQbSettings()
+	settings.BindingSymbol = '?'
+	settings.BindingNumeration = false
+	settings.RelationSymbol = '`'
+	settings.ReturningFeature = true
+	settings.LockForUpdateFeature = true
+	settings.LockForShareFeature = true
+	settings.LockForKeyShareFeature = false
+	settings.LockForNoKeyUpdateFeature = false
 	settings.LockSkipLockedFeature = true
 	settings.LockNoWaitFeature = true
 

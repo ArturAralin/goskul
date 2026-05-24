@@ -22,15 +22,17 @@ func (bv *BindingValue) clone() *BindingValue {
 }
 
 type QbSettings struct {
-	BindingSymbol      byte
-	RelationSymbol     byte
-	BindingValidatorFn *func(binding interface{}) error
-	ReturningFeature         bool
-	LockForUpdateFeature     bool
-	LockForShareFeature      bool
+	BindingSymbol             byte
+	BindingNumeration         bool
+	RelationSymbol            byte
+	BindingValidatorFn        *func(binding interface{}) error
+	ReturningFeature          bool
+	LockForUpdateFeature      bool
+	LockForShareFeature       bool
+	LockForKeyShareFeature    bool
 	LockForNoKeyUpdateFeature bool
-	LockSkipLockedFeature    bool
-	LockNoWaitFeature        bool
+	LockSkipLockedFeature     bool
+	LockNoWaitFeature         bool
 }
 
 func (qbSettings *QbSettings) ValidateBinding(binding interface{}) error {

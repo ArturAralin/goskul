@@ -133,11 +133,15 @@ func (qb *ConditionQb) ExtendSql(ctx *SqlBuildingCtx) error {
 					ctx.Sql.WriteByte(' ')
 				}
 
-				ctx.WriteArg(cond.left, false)
+				if err := ctx.WriteArg(cond.left, false); err != nil {
+					return err
+				}
 				ctx.Sql.WriteByte(' ')
 				ctx.Sql.WriteString(cond.op)
 				ctx.Sql.WriteByte(' ')
-				ctx.WriteArg(cond.right, false)
+				if err := ctx.WriteArg(cond.right, false); err != nil {
+					return err
+				}
 			}
 		case unaryCondRight:
 			{
@@ -148,7 +152,9 @@ func (qb *ConditionQb) ExtendSql(ctx *SqlBuildingCtx) error {
 
 				ctx.Sql.WriteString(cond.op)
 				ctx.Sql.WriteByte(' ')
-				ctx.WriteArg(cond.val, false)
+				if err := ctx.WriteArg(cond.val, false); err != nil {
+					return err
+				}
 			}
 		case unaryCondLeft:
 			{
@@ -157,7 +163,9 @@ func (qb *ConditionQb) ExtendSql(ctx *SqlBuildingCtx) error {
 					ctx.Sql.WriteByte(' ')
 				}
 
-				ctx.WriteArg(cond.val, false)
+				if err := ctx.WriteArg(cond.val, false); err != nil {
+					return err
+				}
 				ctx.Sql.WriteByte(' ')
 				ctx.Sql.WriteString(cond.op)
 			}
