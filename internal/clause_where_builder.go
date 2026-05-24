@@ -123,6 +123,38 @@ func (b *WhereBuilder[T]) OrWhereNotIn(col interface{}, values interface{}) *T {
 	return b.self
 }
 
+type SubCond struct {
+	WhereBuilder[SubCond]
+}
+
+func newSubCond(settings *QbSettings) *SubCond {
+	s := &SubCond{}
+	s.WhereBuilder = NewWhereBuilder[SubCond](s, settings)
+	return s
+}
+
+func (b *WhereBuilder[T]) whereSubCondOp(unionOp string, fn func(*SubCond)) *T {
+	b.initWhere()
+	sub := newSubCond(b.settings)
+	fn(sub)
+	if sub.whereClause != nil {
+		b.whereClause.PushSubCond(unionOp, sub.whereClause)
+	}
+	return b.self
+}
+
+func (b *WhereBuilder[T]) WhereSubCond(fn func(*SubCond)) *T {
+	return b.whereSubCondOp("and", fn)
+}
+
+func (b *WhereBuilder[T]) AndWhereSubCond(fn func(*SubCond)) *T {
+	return b.whereSubCondOp("and", fn)
+}
+
+func (b *WhereBuilder[T]) OrWhereSubCond(fn func(*SubCond)) *T {
+	return b.whereSubCondOp("or", fn)
+}
+
 func (b *WhereBuilder[T]) cloneWhereClause() *ConditionQb {
 	if b.whereClause == nil {
 		return nil

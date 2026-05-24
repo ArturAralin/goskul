@@ -3,6 +3,7 @@ package goskul
 import "github.com/ArturAralin/goskul/internal"
 
 type JoinClause = internal.JoinClause
+type SubCond = internal.SubCond
 type DoUpdateQb = internal.DoUpdateQb
 type SelectQb = internal.SelectQb
 type QbRaw = internal.QbRaw

@@ -373,3 +373,184 @@ func TestOrWhereRaw(t *testing.T) {
 		t.Errorf("expected args[1] = 100, got %v", args[1])
 	}
 }
+
+func TestWhereSubCondTwoConditions(t *testing.T) {
+	qb := sqlQb.Select().
+		From("my_table").
+		WhereSubCond(func(s *goskul.SubCond) {
+			s.Where("x", "=", 10).Where("y", "=", 20)
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "my_table" where "x" = $1 and "y" = $2`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 2 {
+		t.Fatalf("expected 2 args, got %d: %v", len(args), args)
+	}
+	if args[0] != 10 {
+		t.Errorf("expected args[0] = 10, got %v", args[0])
+	}
+	if args[1] != 20 {
+		t.Errorf("expected args[1] = 20, got %v", args[1])
+	}
+}
+
+func TestWhereSubCondSingleCondition(t *testing.T) {
+	qb := sqlQb.Select().
+		From("my_table").
+		WhereSubCond(func(s *goskul.SubCond) {
+			s.Where("x", "=", 10)
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "my_table" where "x" = $1`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 1 {
+		t.Fatalf("expected 1 arg, got %d: %v", len(args), args)
+	}
+	if args[0] != 10 {
+		t.Errorf("expected args[0] = 10, got %v", args[0])
+	}
+}
+
+func TestWhereSubCondOrWhereSubCond(t *testing.T) {
+	qb := sqlQb.Select().
+		From("my_table").
+		WhereSubCond(func(s *goskul.SubCond) {
+			s.Where("x", "=", 10).Where("y", "=", 20)
+		}).
+		OrWhereSubCond(func(s *goskul.SubCond) {
+			s.Where("x", "=", 30).Where("y", "=", 40)
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "my_table" where ("x" = $1 and "y" = $2) or ("x" = $3 and "y" = $4)`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 4 {
+		t.Fatalf("expected 4 args, got %d: %v", len(args), args)
+	}
+	if args[0] != 10 {
+		t.Errorf("expected args[0] = 10, got %v", args[0])
+	}
+	if args[1] != 20 {
+		t.Errorf("expected args[1] = 20, got %v", args[1])
+	}
+	if args[2] != 30 {
+		t.Errorf("expected args[2] = 30, got %v", args[2])
+	}
+	if args[3] != 40 {
+		t.Errorf("expected args[3] = 40, got %v", args[3])
+	}
+}
+
+func TestAndWhereSubCond(t *testing.T) {
+	qb := sqlQb.Select().
+		From("my_table").
+		Where("a", "=", 1).
+		AndWhereSubCond(func(s *goskul.SubCond) {
+			s.Where("b", "=", 2).Where("c", "=", 3)
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "my_table" where "a" = $1 and ("b" = $2 and "c" = $3)`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 3 {
+		t.Fatalf("expected 3 args, got %d: %v", len(args), args)
+	}
+	if args[0] != 1 {
+		t.Errorf("expected args[0] = 1, got %v", args[0])
+	}
+	if args[1] != 2 {
+		t.Errorf("expected args[1] = 2, got %v", args[1])
+	}
+	if args[2] != 3 {
+		t.Errorf("expected args[2] = 3, got %v", args[2])
+	}
+}
+
+func TestWhereSubCondMixedWithWhere(t *testing.T) {
+	qb := sqlQb.Select().
+		From("my_table").
+		Where("active", "=", true).
+		WhereSubCond(func(s *goskul.SubCond) {
+			s.Where("x", "=", 10).OrWhere("y", "=", 20)
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "my_table" where "active" = $1 and ("x" = $2 or "y" = $3)`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 3 {
+		t.Fatalf("expected 3 args, got %d: %v", len(args), args)
+	}
+	if args[0] != true {
+		t.Errorf("expected args[0] = true, got %v", args[0])
+	}
+	if args[1] != 10 {
+		t.Errorf("expected args[1] = 10, got %v", args[1])
+	}
+	if args[2] != 20 {
+		t.Errorf("expected args[2] = 20, got %v", args[2])
+	}
+}
+
+func TestWhereSubCondNested(t *testing.T) {
+	qb := sqlQb.Select().
+		From("my_table").
+		WhereSubCond(func(outer *goskul.SubCond) {
+			outer.WhereSubCond(func(inner *goskul.SubCond) {
+				inner.Where("x", "=", 10).Where("y", "=", 20)
+			}).OrWhere("z", "=", 30)
+		})
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "my_table" where ("x" = $1 and "y" = $2) or "z" = $3`
+	if sql != want {
+		t.Errorf("got  %q\nwant %q", sql, want)
+	}
+	if len(args) != 3 {
+		t.Fatalf("expected 3 args, got %d: %v", len(args), args)
+	}
+	if args[0] != 10 {
+		t.Errorf("expected args[0] = 10, got %v", args[0])
+	}
+	if args[1] != 20 {
+		t.Errorf("expected args[1] = 20, got %v", args[1])
+	}
+	if args[2] != 30 {
+		t.Errorf("expected args[2] = 30, got %v", args[2])
+	}
+}

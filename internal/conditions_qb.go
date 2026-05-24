@@ -24,6 +24,11 @@ type rawCond struct {
 	raw     *QbRaw
 }
 
+type subCond struct {
+	unionOp    string
+	conditions *ConditionQb
+}
+
 type ConditionQb struct {
 	settings   *QbSettings
 	conditions []interface{}
@@ -57,6 +62,13 @@ func (qb *ConditionQb) PushUnaryCondRight(unionOp string, op string, val interfa
 
 func (qb *ConditionQb) PushRawCond(unionOp string, raw *QbRaw) {
 	qb.conditions = append(qb.conditions, rawCond{unionOp: unionOp, raw: raw})
+}
+
+func (qb *ConditionQb) PushSubCond(unionOp string, conditions *ConditionQb) {
+	qb.conditions = append(qb.conditions, subCond{
+		unionOp:    unionOp,
+		conditions: conditions,
+	})
 }
 
 func (qb *ConditionQb) PushUnaryCondLeft(unionOp string, op string, val interface{}) {
@@ -94,6 +106,11 @@ func (qb *ConditionQb) clone() *ConditionQb {
 			cloned.conditions[i] = c
 		case rawCond:
 			cloned.conditions[i] = c
+		case subCond:
+			cloned.conditions[i] = subCond{
+				unionOp:    c.unionOp,
+				conditions: c.conditions.clone(),
+			}
 		default:
 			cloned.conditions[i] = cond
 		}
@@ -153,6 +170,24 @@ func (qb *ConditionQb) ExtendSql(ctx *SqlBuildingCtx) error {
 
 				if err := cond.raw.ExtendSql(ctx); err != nil {
 					return err
+				}
+			}
+		case subCond:
+			{
+				if i > 0 {
+					ctx.Sql.WriteString(cond.unionOp)
+					ctx.Sql.WriteByte(' ')
+				}
+
+				needParens := len(cond.conditions.conditions) > 1 && len(qb.conditions) > 1
+				if needParens {
+					ctx.Sql.WriteByte('(')
+				}
+				if err := cond.conditions.ExtendSql(ctx); err != nil {
+					return err
+				}
+				if needParens {
+					ctx.Sql.WriteByte(')')
 				}
 			}
 		}

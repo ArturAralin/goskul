@@ -277,8 +277,54 @@ All three query types share the same WHERE API.
 | `.OrWhereNotIn(col, values)` | `col not in ($1, $2, ...)` or `col not in (subquery)` (OR) |
 | `.WhereRaw(raw)` | arbitrary raw fragment (AND) |
 | `.OrWhereRaw(raw)` | arbitrary raw fragment (OR) |
+| `.WhereSubCond(fn)` | grouped conditions (AND) |
+| `.AndWhereSubCond(fn)` | grouped conditions (AND, alias for `WhereSubCond`) |
+| `.OrWhereSubCond(fn)` | grouped conditions (OR) |
 
 `col` and `val` accept plain strings (treated as identifiers), `*QbRaw` (inlined as-is), or any value (bound as a parameter).
+
+### Grouped conditions (SubCond)
+
+`.WhereSubCond`, `.AndWhereSubCond`, and `.OrWhereSubCond` accept a callback that receives a `*SubCond`. Conditions built inside the callback are grouped. Parentheses are emitted only when the group has more than one condition **and** sits alongside other conditions at the same level — redundant wrapping is omitted automatically.
+
+```go
+// Two groups combined with OR → parentheses emitted
+qb.Select().From("users").
+    WhereSubCond(func(s *goskul.SubCond) {
+        s.Where("x", "=", 10).Where("y", "=", 20)
+    }).
+    OrWhereSubCond(func(s *goskul.SubCond) {
+        s.Where("x", "=", 30).Where("y", "=", 40)
+    })
+// select * from "users" where ("x" = $1 and "y" = $2) or ("x" = $3 and "y" = $4)
+
+// Sole group — no redundant parentheses
+qb.Select().From("users").
+    WhereSubCond(func(s *goskul.SubCond) {
+        s.Where("x", "=", 10).Where("y", "=", 20)
+    })
+// select * from "users" where "x" = $1 and "y" = $2
+
+// Mixed flat and grouped
+qb.Select().From("users").
+    Where("active", "=", true).
+    WhereSubCond(func(s *goskul.SubCond) {
+        s.Where("role", "=", "admin").OrWhere("role", "=", "mod")
+    })
+// select * from "users" where "active" = $1 and ("role" = $2 or "role" = $3)
+```
+
+`*SubCond` exposes the same WHERE methods as the parent builder, including `WhereSubCond` itself, so groups can be nested to any depth:
+
+```go
+qb.Select().From("t").
+    WhereSubCond(func(outer *goskul.SubCond) {
+        outer.WhereSubCond(func(inner *goskul.SubCond) {
+            inner.Where("x", "=", 1).Where("y", "=", 2)
+        }).OrWhere("z", "=", 3)
+    })
+// select * from "t" where ("x" = $1 and "y" = $2) or "z" = $3
+```
 
 ```go
 // WhereIn with a slice
