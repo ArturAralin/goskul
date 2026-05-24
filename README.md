@@ -199,6 +199,52 @@ qb.Insert().Into("users").Columns("id", "score").Values(1, 10).
 // ... on conflict ("id") do update set "score" = $3
 ```
 
+## RETURNING
+
+`.Returning(cols...)` is supported on `INSERT`, `UPDATE`, and `DELETE`. It requires `InsertReturningFeature` to be enabled in settings — `PostgreSQLSettings()` enables it by default.
+
+```go
+// INSERT … RETURNING
+qb.Insert().Into("users").Columns("name").Values("Alice").
+    Returning("id", "created_at")
+// insert into "users" ("name") values ($1) returning "id", "created_at"
+
+// UPDATE … RETURNING
+qb.Update().Table("users").Set("name", "Bob").Where("id", "=", 1).
+    Returning("id", "name")
+// update "users" set "name" = $1 where "id" = $2 returning "id", "name"
+
+// DELETE … RETURNING
+qb.Delete().From("sessions").Where("expired", "=", true).
+    Returning("id")
+// delete from "sessions" where "expired" = $1 returning "id"
+```
+
+Pass `"*"` for a wildcard. Unlike plain column names it is emitted unquoted, and it can coexist with other expressions in the list:
+
+```go
+qb.Insert().Into("users").Columns("name").Values("Alice").Returning("*")
+// … returning *
+
+qb.Insert().Into("users").Columns("name").Values("Alice").Returning("id", "*")
+// … returning "id", *
+```
+
+`*QbRaw` and `*SelectQb` are accepted as returning expressions:
+
+```go
+// Raw expression
+qb.Insert().Into("users").Columns("score").Values(10).
+    Returning(qb.Raw(`coalesce("id", 0)`))
+// … returning coalesce("id", 0)
+
+// Subquery
+sub := qb.Select().Columns("label").From("roles").Where("id", "=", goskul.Rel("users.role_id"))
+qb.Insert().Into("users").Columns("name").Values("Alice").
+    Returning(sub)
+// … returning (select "label" from "roles" where "id" = "users"."role_id")
+```
+
 ### Subquery as value
 
 Any `*SelectQb` can be passed as a value in `Where`, `WhereIn`, etc. — it is rendered as `(select ...)` inline.

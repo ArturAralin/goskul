@@ -349,3 +349,4 @@ func TestInsertValuesRawWithBindings(t *testing.T) {
 		t.Errorf("expected args[2] = 3, got %v", args[2])
 	}
 }
+

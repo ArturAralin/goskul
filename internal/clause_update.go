@@ -9,6 +9,7 @@ type setClause struct {
 
 type UpdateQb struct {
 	WhereBuilder[UpdateQb]
+	ReturningBuilder[UpdateQb]
 	tableClause string
 	setClauses  []setClause
 	cteQb       *CteQb
@@ -17,6 +18,7 @@ type UpdateQb struct {
 func NewUpdateQueryBuilder(settings *QbSettings) *UpdateQb {
 	qb := &UpdateQb{}
 	qb.WhereBuilder = NewWhereBuilder(qb, settings)
+	qb.ReturningBuilder = NewReturningBuilder(qb, settings)
 	return qb
 }
 
@@ -39,8 +41,10 @@ func (qb *UpdateQb) Clone() *UpdateQb {
 		clone.setClauses = make([]setClause, len(qb.setClauses))
 		copy(clone.setClauses, qb.setClauses)
 	}
-	clone.WhereBuilder = NewWhereBuilder(clone, qb.settings)
+	clone.WhereBuilder = NewWhereBuilder(clone, qb.WhereBuilder.settings)
 	clone.whereClause = qb.cloneWhereClause()
+	clone.ReturningBuilder = NewReturningBuilder(clone, qb.WhereBuilder.settings)
+	clone.ReturningBuilder.returningClause = qb.cloneReturningClause()
 	return clone
 }
 
@@ -97,11 +101,17 @@ func (qb *UpdateQb) ExtendSql(ctx *SqlBuildingCtx) error {
 		}
 	}
 
+	if qb.returningClause != nil {
+		if err := qb.returningClause.ExtendSql(ctx); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (qb *UpdateQb) ToSql() (string, []interface{}, error) {
-	ctx := NewSqlBuildingCtx(qb.settings)
+	ctx := NewSqlBuildingCtx(qb.WhereBuilder.settings)
 
 	if qb.cteQb != nil {
 		if err := qb.cteQb.ExtendSql(&ctx); err != nil {

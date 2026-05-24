@@ -4,6 +4,7 @@ import "fmt"
 
 type DeleteQb struct {
 	WhereBuilder[DeleteQb]
+	ReturningBuilder[DeleteQb]
 	fromClause interface{}
 	cteQb      *CteQb
 }
@@ -11,6 +12,7 @@ type DeleteQb struct {
 func NewDeleteQueryBuilder(settings *QbSettings) *DeleteQb {
 	qb := &DeleteQb{}
 	qb.WhereBuilder = NewWhereBuilder(qb, settings)
+	qb.ReturningBuilder = NewReturningBuilder(qb, settings)
 	return qb
 }
 
@@ -24,8 +26,10 @@ func (qb *DeleteQb) Clone() *DeleteQb {
 		fromClause: qb.fromClause,
 		cteQb:      qb.cteQb,
 	}
-	clone.WhereBuilder = NewWhereBuilder(clone, qb.settings)
+	clone.WhereBuilder = NewWhereBuilder(clone, qb.WhereBuilder.settings)
 	clone.whereClause = qb.cloneWhereClause()
+	clone.ReturningBuilder = NewReturningBuilder(clone, qb.WhereBuilder.settings)
+	clone.ReturningBuilder.returningClause = qb.cloneReturningClause()
 	return clone
 }
 
@@ -62,11 +66,17 @@ func (qb *DeleteQb) ExtendSql(ctx *SqlBuildingCtx) error {
 		}
 	}
 
+	if qb.returningClause != nil {
+		if err := qb.returningClause.ExtendSql(ctx); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (qb *DeleteQb) ToSql() (string, []interface{}, error) {
-	ctx := NewSqlBuildingCtx(qb.settings)
+	ctx := NewSqlBuildingCtx(qb.WhereBuilder.settings)
 
 	if qb.cteQb != nil {
 		if err := qb.cteQb.ExtendSql(&ctx); err != nil {

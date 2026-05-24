@@ -22,9 +22,10 @@ func (bv *BindingValue) clone() *BindingValue {
 }
 
 type QbSettings struct {
-	BindingSymbol      byte
-	RelationSymbol     byte
-	BindingValidatorFn *func(binding interface{}) error
+	BindingSymbol          byte
+	RelationSymbol         byte
+	BindingValidatorFn     *func(binding interface{}) error
+	InsertReturningFeature bool
 }
 
 func (qbSettings *QbSettings) ValidateBinding(binding interface{}) error {
@@ -35,11 +36,8 @@ func (qbSettings *QbSettings) ValidateBinding(binding interface{}) error {
 	return nil
 }
 
-func NewQbSettings(bindingSymbol byte, relationSymbol byte) *QbSettings {
-	return &QbSettings{
-		BindingSymbol:  bindingSymbol,
-		RelationSymbol: relationSymbol,
-	}
+func NewQbSettings() *QbSettings {
+	return &QbSettings{}
 }
 
 type QbRaw struct {

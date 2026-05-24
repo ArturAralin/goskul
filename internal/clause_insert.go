@@ -3,6 +3,7 @@ package internal
 import "fmt"
 
 type InsertQb struct {
+	ReturningBuilder[InsertQb]
 	settings        *QbSettings
 	tableClause     string
 	columns         []string
@@ -14,7 +15,9 @@ type InsertQb struct {
 }
 
 func NewInsertQueryBuilder(settings *QbSettings) *InsertQb {
-	return &InsertQb{settings: settings}
+	qb := &InsertQb{settings: settings}
+	qb.ReturningBuilder = NewReturningBuilder(qb, settings)
+	return qb
 }
 
 func (qb *InsertQb) Into(table string) *InsertQb {
@@ -36,6 +39,7 @@ func (qb *InsertQb) OnConflict(cols ...string) *insertOnConflictQb {
 	return &insertOnConflictQb{insert: qb, columns: cols}
 }
 
+
 func (qb *InsertQb) Clone() *InsertQb {
 	clone := &InsertQb{
 		settings:       qb.settings,
@@ -43,10 +47,12 @@ func (qb *InsertQb) Clone() *InsertQb {
 		cteQb:          qb.cteQb,
 		conflictAction: qb.conflictAction,
 	}
+
 	if qb.columns != nil {
 		clone.columns = make([]string, len(qb.columns))
 		copy(clone.columns, qb.columns)
 	}
+
 	if qb.rows != nil {
 		clone.rows = make([][]interface{}, len(qb.rows))
 		for i, row := range qb.rows {
@@ -55,16 +61,22 @@ func (qb *InsertQb) Clone() *InsertQb {
 			clone.rows[i] = r
 		}
 	}
+
 	if qb.conflictColumns != nil {
 		clone.conflictColumns = make([]string, len(qb.conflictColumns))
 		copy(clone.conflictColumns, qb.conflictColumns)
 	}
+
 	if qb.conflictUpdate != nil {
 		du := &DoUpdateQb{}
 		du.setClauses = make([]setClause, len(qb.conflictUpdate.setClauses))
 		copy(du.setClauses, qb.conflictUpdate.setClauses)
 		clone.conflictUpdate = du
 	}
+
+	clone.ReturningBuilder = NewReturningBuilder(clone, qb.settings)
+	clone.ReturningBuilder.returningClause = qb.cloneReturningClause()
+
 	return clone
 }
 
@@ -177,6 +189,12 @@ func (qb *InsertQb) ExtendSql(ctx *SqlBuildingCtx) error {
 			if err := qb.conflictUpdate.extendSql(ctx); err != nil {
 				return err
 			}
+		}
+	}
+
+	if qb.returningClause != nil {
+		if err := qb.returningClause.ExtendSql(ctx); err != nil {
+			return err
 		}
 	}
 

@@ -14,7 +14,12 @@ type Goskul struct {
 }
 
 func PostgreSQLSettings() *internal.QbSettings {
-	return internal.NewQbSettings('$', '"')
+	settings := internal.NewQbSettings()
+	settings.BindingSymbol = '$'
+	settings.RelationSymbol = '"'
+	settings.InsertReturningFeature = true
+
+	return settings
 }
 
 func SetupQueryBuilder(settings *internal.QbSettings) *Goskul {
