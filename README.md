@@ -494,3 +494,7 @@ Pass `sql` and `args` directly to `pgx` / `database/sql`:
 ```go
 rows, err := db.Query(ctx, sql, args...)
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
