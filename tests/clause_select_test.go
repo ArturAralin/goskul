@@ -663,6 +663,67 @@ func TestOrWhereRaw(t *testing.T) {
 	}
 }
 
+func TestOffset(t *testing.T) {
+	qb := sqlQb.Select().
+		From("my_table").
+		Offset(40)
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "my_table" offset 40`
+	if sql != want {
+		t.Errorf("got %q, want %q", sql, want)
+	}
+	if len(args) != 0 {
+		t.Errorf("expected no args, got %v", args)
+	}
+}
+
+func TestLimitAndOffset(t *testing.T) {
+	qb := sqlQb.Select().
+		From("my_table").
+		Limit(10).
+		Offset(20)
+
+	sql, args, err := qb.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "my_table" limit 10 offset 20`
+	if sql != want {
+		t.Errorf("got %q, want %q", sql, want)
+	}
+	if len(args) != 0 {
+		t.Errorf("expected no args, got %v", args)
+	}
+}
+
+func TestSelectClonePreservesOffset(t *testing.T) {
+	base := sqlQb.Select().
+		From("tbl").
+		Limit(5).
+		Offset(15)
+
+	clone := base.Clone().Where("x", "=", 1)
+
+	sql, args, err := clone.ToSql()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := `select * from "tbl" where "x" = $1 limit 5 offset 15`
+	if sql != want {
+		t.Errorf("got %q, want %q", sql, want)
+	}
+	if args[0] != 1 {
+		t.Errorf("expected args[0]=1, got %v", args[0])
+	}
+}
+
 func TestSelectClonePreservesOrderAndLimit(t *testing.T) {
 	base := sqlQb.Select().
 		From("tbl").

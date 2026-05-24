@@ -322,7 +322,7 @@ qb.Select().From("scores").OrderBy("score", "asc", "last")
 // select * from "scores" order by "score" asc nulls last
 ```
 
-## LIMIT
+## LIMIT / OFFSET
 
 ```go
 qb.Select().From("events").
@@ -330,9 +330,16 @@ qb.Select().From("events").
     OrderBy("created_at", "desc").
     Limit(10)
 // select * from "events" where "active" = $1 order by "created_at" desc limit 10
+
+qb.Select().From("events").Limit(10).Offset(20)
+// select * from "events" limit 10 offset 20
+
+// Offset without Limit is valid
+qb.Select().From("events").Offset(40)
+// select * from "events" offset 40
 ```
 
-`Limit` takes a `uint64`. `ORDER BY` and `LIMIT` are also preserved through `.Clone()`.
+Both `Limit` and `Offset` take a `uint64`. `ORDER BY`, `LIMIT`, and `OFFSET` are preserved through `.Clone()`.
 
 ## CTE (WITH)
 

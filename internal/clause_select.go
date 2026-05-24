@@ -15,6 +15,7 @@ type SelectQb struct {
 	joinsClause   []*JoinClause
 	orderClauses  []orderClause
 	limitClause   *uint64
+	offsetClause  *uint64
 }
 
 func NewSelectQueryBuilder(settings *QbSettings) *SelectQb {
@@ -48,6 +49,7 @@ func (qb *SelectQb) Columns(cols ...interface{}) *SelectQb {
 	return qb
 }
 
+// string, *string or Raw
 func (qb *SelectQb) From(from interface{}) *SelectQb {
 	qb.fromClause = from
 	return qb
@@ -118,6 +120,11 @@ func (qb *SelectQb) Limit(n uint64) *SelectQb {
 	return qb
 }
 
+func (qb *SelectQb) Offset(n uint64) *SelectQb {
+	qb.offsetClause = &n
+	return qb
+}
+
 func (qb *SelectQb) CrossJoin(tbl string) *SelectQb {
 	qb.joinsClause = append(qb.joinsClause, NewCrossJoinClause(tbl))
 	return qb
@@ -149,6 +156,7 @@ func (qb *SelectQb) Clone() *SelectQb {
 		copy(clone.orderClauses, qb.orderClauses)
 	}
 	clone.limitClause = qb.limitClause
+	clone.offsetClause = qb.offsetClause
 	clone.WhereBuilder = NewWhereBuilder(clone, qb.settings)
 	clone.whereClause = qb.cloneWhereClause()
 	return clone
@@ -271,6 +279,12 @@ func (qb *SelectQb) ExtendSql(ctx *SqlBuildingCtx) error {
 
 	if qb.limitClause != nil {
 		if _, err := fmt.Fprintf(&ctx.Sql, " limit %d", *qb.limitClause); err != nil {
+			return err
+		}
+	}
+
+	if qb.offsetClause != nil {
+		if _, err := fmt.Fprintf(&ctx.Sql, " offset %d", *qb.offsetClause); err != nil {
 			return err
 		}
 	}
