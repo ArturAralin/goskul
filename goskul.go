@@ -18,7 +18,12 @@ func PostgreSQLSettings() *internal.QbSettings {
 	settings := internal.NewQbSettings()
 	settings.BindingSymbol = '$'
 	settings.RelationSymbol = '"'
-	settings.InsertReturningFeature = true
+	settings.ReturningFeature = true
+	settings.LockForUpdateFeature = true
+	settings.LockForShareFeature = true
+	settings.LockForNoKeyUpdateFeature = true
+	settings.LockSkipLockedFeature = true
+	settings.LockNoWaitFeature = true
 
 	return settings
 }

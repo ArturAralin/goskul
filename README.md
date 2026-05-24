@@ -201,7 +201,7 @@ qb.Insert().Into("users").Columns("id", "score").Values(1, 10).
 
 ## RETURNING
 
-`.Returning(cols...)` is supported on `INSERT`, `UPDATE`, and `DELETE`. It requires `InsertReturningFeature` to be enabled in settings — `PostgreSQLSettings()` enables it by default.
+`.Returning(cols...)` is supported on `INSERT`, `UPDATE`, and `DELETE`. It requires `ReturningFeature` to be enabled in settings — `PostgreSQLSettings()` enables it by default.
 
 ```go
 // INSERT … RETURNING
@@ -432,6 +432,33 @@ qb.Select().From("events").Offset(40)
 ```
 
 Both `Limit` and `Offset` take a `uint64`. `ORDER BY`, `LIMIT`, and `OFFSET` are preserved through `.Clone()`.
+
+## Locking
+
+`.LockForUpdate()`, `.LockForShare()`, and `.LockForNoKeyUpdate()` append a row-level lock clause after `OFFSET`. Each requires the corresponding feature flag to be enabled — `PostgreSQLSettings()` enables all of them.
+
+```go
+qb.Select().From("accounts").Where("id", "=", 1).LockForUpdate()
+// select * from "accounts" where "id" = $1 for update
+
+qb.Select().From("accounts").Where("id", "=", 1).LockForShare()
+// select * from "accounts" where "id" = $1 for share
+
+qb.Select().From("accounts").Where("id", "=", 1).LockForNoKeyUpdate()
+// select * from "accounts" where "id" = $1 for no key update
+```
+
+Chain `.LockSkipLocked()` or `.LockNoWait()` to add a modifier:
+
+```go
+qb.Select().From("jobs").Where("status", "=", "pending").LockForUpdate().LockSkipLocked()
+// select * from "jobs" where "status" = $1 for update skip locked
+
+qb.Select().From("jobs").Where("status", "=", "pending").LockForUpdate().LockNoWait()
+// select * from "jobs" where "status" = $1 for update nowait
+```
+
+If `.LockSkipLocked()` or `.LockNoWait()` is called without a preceding lock type, no lock clause is emitted. Calling multiple lock-type methods is allowed — the last one wins. Lock state is preserved through `.Clone()`.
 
 ## CTE (WITH)
 

@@ -16,6 +16,7 @@ type SelectQb struct {
 	orderClauses  []orderClause
 	limitClause   *uint64
 	offsetClause  *uint64
+	lockClause    *selectLockClause
 }
 
 func NewSelectQueryBuilder(settings *QbSettings) *SelectQb {
@@ -125,6 +126,61 @@ func (qb *SelectQb) Offset(n uint64) *SelectQb {
 	return qb
 }
 
+func (qb *SelectQb) LockForUpdate() *SelectQb {
+	if !qb.settings.LockForUpdateFeature {
+		panic("LockForUpdateFeature is not supported by database settings")
+	}
+	if qb.lockClause == nil {
+		qb.lockClause = &selectLockClause{}
+	}
+	qb.lockClause.lockType = selectLockForUpdate
+	return qb
+}
+
+func (qb *SelectQb) LockForShare() *SelectQb {
+	if !qb.settings.LockForShareFeature {
+		panic("LockForShareFeature is not supported by database settings")
+	}
+	if qb.lockClause == nil {
+		qb.lockClause = &selectLockClause{}
+	}
+	qb.lockClause.lockType = selectLockForShare
+	return qb
+}
+
+func (qb *SelectQb) LockForNoKeyUpdate() *SelectQb {
+	if !qb.settings.LockForNoKeyUpdateFeature {
+		panic("LockForNoKeyUpdateFeature is not supported by database settings")
+	}
+	if qb.lockClause == nil {
+		qb.lockClause = &selectLockClause{}
+	}
+	qb.lockClause.lockType = selectLockForNoKeyUpdate
+	return qb
+}
+
+func (qb *SelectQb) LockSkipLocked() *SelectQb {
+	if !qb.settings.LockSkipLockedFeature {
+		panic("LockSkipLockedFeature is not supported by database settings")
+	}
+	if qb.lockClause == nil {
+		qb.lockClause = &selectLockClause{}
+	}
+	qb.lockClause.lockModifier = selectLockSkipLocked
+	return qb
+}
+
+func (qb *SelectQb) LockNoWait() *SelectQb {
+	if !qb.settings.LockNoWaitFeature {
+		panic("LockNoWaitFeature is not supported by database settings")
+	}
+	if qb.lockClause == nil {
+		qb.lockClause = &selectLockClause{}
+	}
+	qb.lockClause.lockModifier = selectLockNoWait
+	return qb
+}
+
 func (qb *SelectQb) CrossJoin(tbl string) *SelectQb {
 	qb.joinsClause = append(qb.joinsClause, NewCrossJoinClause(tbl))
 	return qb
@@ -157,6 +213,10 @@ func (qb *SelectQb) Clone() *SelectQb {
 	}
 	clone.limitClause = qb.limitClause
 	clone.offsetClause = qb.offsetClause
+	if qb.lockClause != nil {
+		lc := *qb.lockClause
+		clone.lockClause = &lc
+	}
 	clone.WhereBuilder = NewWhereBuilder(clone, qb.settings)
 	clone.whereClause = qb.cloneWhereClause()
 	return clone
@@ -285,6 +345,12 @@ func (qb *SelectQb) ExtendSql(ctx *SqlBuildingCtx) error {
 
 	if qb.offsetClause != nil {
 		if _, err := fmt.Fprintf(&ctx.Sql, " offset %d", *qb.offsetClause); err != nil {
+			return err
+		}
+	}
+
+	if qb.lockClause != nil && qb.lockClause.lockType != "" {
+		if err := qb.lockClause.ExtendSql(ctx); err != nil {
 			return err
 		}
 	}

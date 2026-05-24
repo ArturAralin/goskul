@@ -51,7 +51,7 @@ func NewReturningBuilder[T any](self *T, settings *QbSettings) ReturningBuilder[
 }
 
 func (b *ReturningBuilder[T]) Returning(cols ...interface{}) *T {
-	if !b.settings.InsertReturningFeature {
+	if !b.settings.ReturningFeature {
 		panic("InsertReturningFeature is not supported by database settings")
 	}
 	if len(cols) == 0 {
