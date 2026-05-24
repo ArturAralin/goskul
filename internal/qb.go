@@ -22,17 +22,18 @@ func (bv *BindingValue) clone() *BindingValue {
 }
 
 type QbSettings struct {
-	BindingSymbol             byte
-	BindingNumeration         bool
-	RelationSymbol            byte
-	BindingValidatorFn        *func(binding interface{}) error
-	ReturningFeature          bool
-	LockForUpdateFeature      bool
-	LockForShareFeature       bool
-	LockForKeyShareFeature    bool
-	LockForNoKeyUpdateFeature bool
-	LockSkipLockedFeature     bool
-	LockNoWaitFeature         bool
+	BuildingSqlDefaultBufferSize int
+	BindingSymbol                byte
+	BindingNumeration            bool
+	RelationSymbol               byte
+	BindingValidatorFn           *func(binding interface{}) error
+	ReturningFeature             bool
+	LockForUpdateFeature         bool
+	LockForShareFeature          bool
+	LockForKeyShareFeature       bool
+	LockForNoKeyUpdateFeature    bool
+	LockSkipLockedFeature        bool
+	LockNoWaitFeature            bool
 }
 
 func (qbSettings *QbSettings) ValidateBinding(binding interface{}) error {
@@ -44,7 +45,9 @@ func (qbSettings *QbSettings) ValidateBinding(binding interface{}) error {
 }
 
 func NewQbSettings() *QbSettings {
-	return &QbSettings{}
+	return &QbSettings{
+		BuildingSqlDefaultBufferSize: 350,
+	}
 }
 
 type QbRaw struct {

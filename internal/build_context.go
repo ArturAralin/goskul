@@ -30,7 +30,7 @@ func (ctx *SqlBuildingCtx) WriteBinding(v interface{}) (int, error) {
 func NewSqlBuildingCtx(settings *QbSettings) SqlBuildingCtx {
 	return SqlBuildingCtx{
 		settings: settings,
-		Sql:      bytes.Buffer{},
+		Sql:      *bytes.NewBuffer(make([]byte, 0, settings.BuildingSqlDefaultBufferSize)),
 	}
 }
 
