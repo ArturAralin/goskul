@@ -27,10 +27,10 @@ func (qb *SelectQb) Column(col interface{}) *SelectQb {
 	switch col := col.(type) {
 	case string:
 		// todo: validate format "col" or "table.col"
-		qb.selectColumns = append(qb.selectColumns, col)
+		qb.selectColumns = append(qb.selectColumns, NewRelation(col))
 	case *string:
 		// todo: validate format "col" or "table.col"
-		qb.selectColumns = append(qb.selectColumns, *col)
+		qb.selectColumns = append(qb.selectColumns, NewRelation(*col))
 	case *QbRaw:
 		qb.selectColumns = append(qb.selectColumns, col)
 	case QbRaw:
@@ -192,7 +192,7 @@ func (qb *SelectQb) ExtendSql(ctx *SqlBuildingCtx) error {
 				return err
 			}
 
-			if err := ctx.WriteArg(&from, true); err != nil {
+			if err := ctx.WriteRelation(from, true); err != nil {
 				return err
 			}
 		case *QbRaw:
@@ -223,7 +223,7 @@ func (qb *SelectQb) ExtendSql(ctx *SqlBuildingCtx) error {
 					return err
 				}
 
-				if err := ctx.WriteArg(from.alias, false); err != nil {
+				if err := ctx.WriteRelation(*from.alias, false); err != nil {
 					return err
 				}
 			}

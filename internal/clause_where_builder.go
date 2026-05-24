@@ -18,7 +18,7 @@ func (b *WhereBuilder[T]) initWhere() {
 
 func rawOrSubQueryOrBindingV(value interface{}) interface{} {
 	switch value := value.(type) {
-	case *QbRaw, *SelectQb:
+	case *QbRaw, *SelectQb, *Relation:
 		return value
 	default:
 		return NewBindingValue(value)
@@ -29,20 +29,37 @@ func rawOrPass(value interface{}) interface{} {
 	switch value := value.(type) {
 	case *QbRaw:
 		return value
+	case string:
+		return NewRelation(value)
+	case *string:
+		return NewRelation(*value)
 	default:
 		return value
 	}
 }
 
+func prepareLeftWhereArg(value interface{}) interface{} {
+	switch value := value.(type) {
+	case *QbRaw, *SelectQb, *Relation:
+		return value
+	case string:
+		return NewRelation(value)
+	case *string:
+		return NewRelation(*value)
+	default:
+		return NewBindingValue(value)
+	}
+}
+
 func (b *WhereBuilder[T]) Where(col interface{}, op string, value interface{}) *T {
 	b.initWhere()
-	b.whereClause.PushBinaryCond("and", col, op, rawOrSubQueryOrBindingV(value))
+	b.whereClause.PushBinaryCond("and", prepareLeftWhereArg(col), op, rawOrSubQueryOrBindingV(value))
 	return b.self
 }
 
 func (b *WhereBuilder[T]) OrWhere(col interface{}, op string, value interface{}) *T {
 	b.initWhere()
-	b.whereClause.PushBinaryCond("or", col, op, rawOrSubQueryOrBindingV(value))
+	b.whereClause.PushBinaryCond("or", prepareLeftWhereArg(col), op, rawOrSubQueryOrBindingV(value))
 	return b.self
 }
 
@@ -84,25 +101,25 @@ func (b *WhereBuilder[T]) OrWhereRaw(raw *QbRaw) *T {
 
 func (b *WhereBuilder[T]) WhereIn(col interface{}, values interface{}) *T {
 	b.initWhere()
-	b.whereClause.PushBinaryCond("and", col, "in", rawOrSubQueryOrBindingV(values))
+	b.whereClause.PushBinaryCond("and", prepareLeftWhereArg(col), "in", rawOrSubQueryOrBindingV(values))
 	return b.self
 }
 
 func (b *WhereBuilder[T]) WhereNotIn(col interface{}, values interface{}) *T {
 	b.initWhere()
-	b.whereClause.PushBinaryCond("and", col, "not in", rawOrSubQueryOrBindingV(values))
+	b.whereClause.PushBinaryCond("and", prepareLeftWhereArg(col), "not in", rawOrSubQueryOrBindingV(values))
 	return b.self
 }
 
 func (b *WhereBuilder[T]) OrWhereIn(col interface{}, values interface{}) *T {
 	b.initWhere()
-	b.whereClause.PushBinaryCond("or", col, "in", rawOrSubQueryOrBindingV(values))
+	b.whereClause.PushBinaryCond("or", prepareLeftWhereArg(col), "in", rawOrSubQueryOrBindingV(values))
 	return b.self
 }
 
 func (b *WhereBuilder[T]) OrWhereNotIn(col interface{}, values interface{}) *T {
 	b.initWhere()
-	b.whereClause.PushBinaryCond("or", col, "not in", rawOrSubQueryOrBindingV(values))
+	b.whereClause.PushBinaryCond("or", prepareLeftWhereArg(col), "not in", rawOrSubQueryOrBindingV(values))
 	return b.self
 }
 

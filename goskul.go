@@ -46,3 +46,7 @@ func (s *Goskul) With(alias string, qb *internal.SelectQb) *internal.CteQb {
 func (s *Goskul) Raw(raw string, args ...interface{}) *internal.QbRaw {
 	return internal.NewQbRaw(s.settings, raw, args...)
 }
+
+func Rel(rel string) *internal.Relation {
+	return internal.NewRelation(rel)
+}

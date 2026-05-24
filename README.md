@@ -10,6 +10,31 @@ qb := goskul.SetupQueryBuilder(goskul.PostgreSQLSettings())
 
 Create one instance and reuse it across the application.
 
+## Custom settings
+
+`PostgreSQLSettings()` is a shortcut for `NewQbSettings('$', '"')`. Use `NewQbSettings` directly to target other databases:
+
+```go
+// MySQL: ? placeholders, backtick quoting
+qb := goskul.SetupQueryBuilder(goskul.NewQbSettings('?', '`'))
+
+// SQLite: ? placeholders, double-quote identifiers (same as PostgreSQL but no $N indexing)
+qb := goskul.SetupQueryBuilder(goskul.NewQbSettings('?', '"'))
+```
+
+To reject unsupported binding types at build time, set `BindingValidatorFn` on the settings:
+
+```go
+settings := goskul.PostgreSQLSettings()
+fn := func(v interface{}) error {
+    if _, ok := v.(string); !ok {
+        return fmt.Errorf("only string bindings allowed")
+    }
+    return nil
+}
+settings.BindingValidatorFn = &fn
+```
+
 ## SELECT
 
 ```go
@@ -33,7 +58,30 @@ qb.Select().Columns("id", "name", "email").From("users")
 
 Without `.Column`/`.Columns` the builder emits `select *`.
 
-### Subquery as FROM
+Plain strings are treated as relation identifiers. Dot-separated notation (`"table.col"`) and inline `as` aliases are supported:
+
+```go
+qb.Select().Column("u.created_at as registered_at").From("users as u")
+// select "u"."created_at" as "registered_at" from "users" as "u"
+```
+
+Pass a `*QbRaw` for expressions that aren't simple identifiers:
+
+```go
+qb.Select().Column(qb.Raw("count(*) as total")).From("events")
+// select count(*) as total from "events"
+```
+
+### FROM variants
+
+**Table name** (plain string, inline alias supported):
+
+```go
+qb.Select().From("users")
+qb.Select().From("public.users as u")
+```
+
+**Subquery** — call `.Alias` on the inner builder (required):
 
 ```go
 inner := qb.Select().From("raw_events").Where("type", "=", "click").Alias("ev")
@@ -42,7 +90,12 @@ qb.Select().Columns("ev.id", "ev.ts").From(inner)
 // select "ev"."id", "ev"."ts" from (select * from "raw_events" where "type" = $1) as "ev"
 ```
 
-`.Alias` is required when using a subquery as a FROM source.
+**Raw expression** — useful for table-valued functions or lateral joins:
+
+```go
+qb.Select().From(qb.Raw(`generate_series(1, 10) as gs(n)`))
+// select * from generate_series(1, 10) as gs(n)
+```
 
 ## UPDATE
 
@@ -229,8 +282,17 @@ Available join types:
 | `RightJoin` / `RightJoinOn` | `right join` |
 | `FullJoin` / `FullJoinOn` | `full join` |
 | `CrossJoin(tbl)` | `cross join` (no ON clause) |
+| `JoinRaw(raw)` | arbitrary raw JOIN fragment |
 
 `JoinClause` methods: `.On`, `.AndOn`, `.OrOn` — all accept `(left, op, right)`.
+
+Table names in join methods support inline `as` aliases (`"orders as o"`). `JoinRaw` is useful for non-standard join syntax:
+
+```go
+qb.Select().From("events").
+    JoinRaw(qb.Raw(`lateral jsonb_array_elements("payload") as elem`))
+// select * from "events" lateral jsonb_array_elements("payload") as elem
+```
 
 ## ORDER BY
 
@@ -312,9 +374,35 @@ qb.Select().From("t").
 // ... where lower(email) = lower($1)
 ```
 
+## Rel
+
+`goskul.Rel(rel string)` creates a relation reference. This matters on the **value** side of `Where`, `OrWhere`, and `JoinClause` conditions: a plain Go `string` is bound as a parameter (`$N`), while `Rel(...)` is quoted as an identifier.
+
+```go
+// Without Rel — "b" becomes a bound parameter
+qb.Select().From("t").Where("a", "=", "b")
+// select * from "t" where "a" = $1  (args: ["b"])
+
+// With Rel — "b" is treated as a column name
+qb.Select().From("t").Where("a", "=", goskul.Rel("b"))
+// select * from "t" where "a" = "b"
+```
+
+Common use case — comparing two columns in a JOIN:
+
+```go
+qb.Select().From("orders").
+    InnerJoin("users", func(j *goskul.JoinClause) {
+        j.On("users.id", "=", "orders.user_id").
+            AndOn("orders.status", "=", goskul.Rel("users.allowed_status"))
+    })
+// ... inner join "users" on "users"."id" = "orders"."user_id"
+//     and "orders"."status" = "users"."allowed_status"
+```
+
 ## Clone
 
-All three builder types support `.Clone()`, which produces a deep copy that shares no state with the original. Useful for building query variants from a common base.
+All four builder types (`SelectQb`, `UpdateQb`, `DeleteQb`, `InsertQb`) support `.Clone()`, which produces a deep copy that shares no state with the original. Useful for building query variants from a common base.
 
 ```go
 base := qb.Select().Column("a").From("tbl")
@@ -322,6 +410,20 @@ base := qb.Select().Column("a").From("tbl")
 q1 := base.Clone().Where("x", "=", 10)
 q2 := base.Clone().Where("x", "=", 20)
 // base is unchanged; q1 and q2 are independent
+```
+
+```go
+baseUpd := qb.Update().Table("users").Set("updated_at", now)
+
+q1 := baseUpd.Clone().Where("role", "=", "admin")
+q2 := baseUpd.Clone().Where("role", "=", "guest")
+```
+
+```go
+baseDel := qb.Delete().From("sessions").Where("expired", "=", true)
+
+q1 := baseDel.Clone().Where("user_id", "=", 1)
+q2 := baseDel.Clone().Where("user_id", "=", 2)
 ```
 
 ## ToSql

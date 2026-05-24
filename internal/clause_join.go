@@ -9,10 +9,25 @@ type JoinClause struct {
 
 func prepareRightArg(value interface{}) interface{} {
 	switch value := value.(type) {
+	case *QbRaw, *Relation, *SelectQb:
+		return value
+	case string:
+		return NewRelation(value)
+	case *string:
+		return NewRelation(*value)
+	default:
+		return NewBindingValue(value)
+	}
+}
+
+func prepareLeftArg(value interface{}) interface{} {
+	switch value := value.(type) {
 	case *QbRaw:
 		return value
-	case *string, string:
-		return value
+	case string:
+		return NewRelation(value)
+	case *string:
+		return NewRelation(*value)
 	default:
 		return NewBindingValue(value)
 	}
@@ -38,22 +53,24 @@ func NewRawJoinClause(raw *QbRaw) *JoinClause {
 }
 
 func (qb *JoinClause) On(left interface{}, op string, right interface{}) *JoinClause {
-	qb.cond.PushBinaryCond("and", left, op, prepareRightArg(right))
+	qb.cond.PushBinaryCond("and", prepareLeftArg(left), op, prepareRightArg(right))
 
 	return qb
 }
 
 func (qb *JoinClause) AndOn(left interface{}, op string, right interface{}) *JoinClause {
-	qb.cond.PushBinaryCond("and", left, op, prepareRightArg(right))
+	qb.cond.PushBinaryCond("and", prepareLeftArg(left), op, prepareRightArg(right))
 
 	return qb
 }
 
 func (qb *JoinClause) OrOn(left interface{}, op string, right interface{}) *JoinClause {
-	qb.cond.PushBinaryCond("or", left, op, prepareRightArg(right))
+	qb.cond.PushBinaryCond("or", prepareLeftArg(left), op, prepareRightArg(right))
 
 	return qb
 }
+
+// todo: add OnRaw, OnBetween
 
 func (qb *JoinClause) Clone() *JoinClause {
 	if qb.rawSql != nil {

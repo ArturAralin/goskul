@@ -9,7 +9,7 @@ type orderClause struct {
 func (o orderClause) ExtendSql(ctx *SqlBuildingCtx) error {
 	switch t := o.term.(type) {
 	case string:
-		if err := ctx.WriteArg(&t, false); err != nil {
+		if err := ctx.WriteRelation(t, false); err != nil {
 			return err
 		}
 	case *QbRaw:

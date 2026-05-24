@@ -52,7 +52,7 @@ func (qb *CteQb) ExtendSql(ctx *SqlBuildingCtx) error {
 		if i > 0 {
 			ctx.Sql.WriteString(", ")
 		}
-		if err := ctx.WriteArg(cte.alias, false); err != nil {
+		if err := ctx.WriteRelation(cte.alias, false); err != nil {
 			return err
 		}
 		ctx.Sql.WriteString(" as (")

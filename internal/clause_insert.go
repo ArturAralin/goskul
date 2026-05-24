@@ -80,7 +80,7 @@ func (qb *InsertQb) ExtendSql(ctx *SqlBuildingCtx) error {
 	if _, err := ctx.Sql.WriteString("insert into "); err != nil {
 		return err
 	}
-	if err := ctx.WriteArg(&qb.tableClause, true); err != nil {
+	if err := ctx.WriteRelation(qb.tableClause, true); err != nil {
 		return err
 	}
 
@@ -94,8 +94,8 @@ func (qb *InsertQb) ExtendSql(ctx *SqlBuildingCtx) error {
 					return err
 				}
 			}
-			c := col
-			if err := ctx.WriteArg(&c, true); err != nil {
+
+			if err := ctx.WriteRelation(col, true); err != nil {
 				return err
 			}
 		}
@@ -157,8 +157,7 @@ func (qb *InsertQb) ExtendSql(ctx *SqlBuildingCtx) error {
 						return err
 					}
 				}
-				c := col
-				if err := ctx.WriteArg(&c, false); err != nil {
+				if err := ctx.WriteRelation(col, false); err != nil {
 					return err
 				}
 			}
@@ -229,7 +228,15 @@ type DoUpdateQb struct {
 }
 
 func (qb *DoUpdateQb) Set(col string, val interface{}) *DoUpdateQb {
-	qb.setClauses = append(qb.setClauses, setClause{col: col, val: val})
+	// check is val a string
+	switch v := val.(type) {
+	case string:
+		val = NewRelation(v)
+	case *string:
+		val = NewRelation(*v)
+	}
+
+	qb.setClauses = append(qb.setClauses, setClause{left: col, right: val})
 	return qb
 }
 
@@ -240,22 +247,18 @@ func (qb *DoUpdateQb) extendSql(ctx *SqlBuildingCtx) error {
 				return err
 			}
 		}
-		if err := ctx.WriteArg(&s.col, false); err != nil {
+		if err := ctx.WriteRelation(s.left, false); err != nil {
 			return err
 		}
 		if _, err := ctx.Sql.WriteString(" = "); err != nil {
 			return err
 		}
-		// string  → relation identifier ("excluded.a" → "excluded"."a")
-		// *QbRaw → raw SQL fragment
-		// other  → bound parameter
-		switch v := s.val.(type) {
-		case string:
-			if err := ctx.WriteArg(&v, false); err != nil {
-				return err
-			}
-		case *string:
-			if err := ctx.WriteArg(v, false); err != nil {
+		// *Relation → relation identifier ("excluded.a" → "excluded"."a")
+		// *QbRaw   → raw SQL fragment
+		// other    → bound parameter
+		switch v := s.right.(type) {
+		case *Relation:
+			if err := ctx.WriteRelation(v.rel, true); err != nil {
 				return err
 			}
 		case *QbRaw:
@@ -263,7 +266,7 @@ func (qb *DoUpdateQb) extendSql(ctx *SqlBuildingCtx) error {
 				return err
 			}
 		default:
-			if err := ctx.WriteArg(NewBindingValue(s.val), false); err != nil {
+			if err := ctx.WriteArg(NewBindingValue(s.right), false); err != nil {
 				return err
 			}
 		}

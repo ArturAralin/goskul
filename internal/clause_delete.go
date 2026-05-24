@@ -45,7 +45,7 @@ func (qb *DeleteQb) ExtendSql(ctx *SqlBuildingCtx) error {
 				return err
 			}
 
-			if err := ctx.WriteArg(&from, false); err != nil {
+			if err := ctx.WriteRelation(from, true); err != nil {
 				return err
 			}
 		default:

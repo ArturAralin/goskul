@@ -228,9 +228,10 @@ func TestInsertOnConflictDoUpdateRelation(t *testing.T) {
 		Into("my_table").
 		Columns("a", "b").
 		Values(1, 2).
-		OnConflict("a").DoUpdate(func(u *goskul.DoUpdateQb) {
-		u.Set("a", "excluded.a").Set("b", "excluded.b")
-	})
+		OnConflict("a").
+		DoUpdate(func(u *goskul.DoUpdateQb) {
+			u.Set("a", "excluded.a").Set("b", "excluded.b")
+		})
 
 	sql, args, err := qb.ToSql()
 	if err != nil {

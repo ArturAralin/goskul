@@ -3,8 +3,8 @@ package internal
 import "fmt"
 
 type setClause struct {
-	col string
-	val interface{}
+	left  string
+	right interface{}
 }
 
 type UpdateQb struct {
@@ -26,7 +26,7 @@ func (qb *UpdateQb) Table(table string) *UpdateQb {
 }
 
 func (qb *UpdateQb) Set(col string, val interface{}) *UpdateQb {
-	qb.setClauses = append(qb.setClauses, setClause{col: col, val: val})
+	qb.setClauses = append(qb.setClauses, setClause{left: col, right: val})
 	return qb
 }
 
@@ -56,7 +56,7 @@ func (qb *UpdateQb) ExtendSql(ctx *SqlBuildingCtx) error {
 	if err := ctx.Sql.WriteByte(' '); err != nil {
 		return err
 	}
-	if err := ctx.WriteArg(&qb.tableClause, true); err != nil {
+	if err := ctx.WriteRelation(qb.tableClause, true); err != nil {
 		return err
 	}
 
@@ -75,7 +75,7 @@ func (qb *UpdateQb) ExtendSql(ctx *SqlBuildingCtx) error {
 			}
 		}
 
-		if err := ctx.WriteArg(&s.col, false); err != nil {
+		if err := ctx.WriteRelation(s.left, false); err != nil {
 			return err
 		}
 
@@ -83,7 +83,7 @@ func (qb *UpdateQb) ExtendSql(ctx *SqlBuildingCtx) error {
 			return err
 		}
 
-		if err := ctx.WriteArg(WrapValue(s.val), false); err != nil {
+		if err := ctx.WriteArg(WrapValue(s.right), false); err != nil {
 			return err
 		}
 	}

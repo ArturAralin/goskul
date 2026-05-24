@@ -109,12 +109,8 @@ func (ctx *SqlBuildingCtx) WriteRelation(rel string, aliasing bool) error {
 
 func (ctx *SqlBuildingCtx) WriteArg(rel interface{}, relationAliasing bool) error {
 	switch rel := rel.(type) {
-	case string:
-		if err := ctx.WriteRelation(rel, relationAliasing); err != nil {
-			return err
-		}
-	case *string:
-		if err := ctx.WriteRelation(*rel, relationAliasing); err != nil {
+	case *Relation:
+		if err := ctx.WriteRelation(rel.rel, relationAliasing); err != nil {
 			return err
 		}
 	case *BindingValue:
@@ -170,7 +166,7 @@ func (ctx *SqlBuildingCtx) WriteArg(rel interface{}, relationAliasing bool) erro
 		}
 		return ctx.Sql.WriteByte(')')
 	default:
-		panic(fmt.Sprintf("Unsupported type in Where clause %v", reflect2.TypeOf(rel)))
+		panic(fmt.Sprintf("Unsupported type %v", reflect2.TypeOf(rel)))
 	}
 
 	return nil
